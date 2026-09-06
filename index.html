@@ -110,6 +110,19 @@
   }
   .hint.done{ color:var(--teal); }
 
+  .tap-start{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:1.15rem;
+    color:var(--purple);
+    margin:4px 0 0 0;
+    animation:pulse 1.8s ease-in-out infinite;
+  }
+  .tap-start.gone{ display:none; }
+  @keyframes pulse{
+    0%,100%{ opacity:0.55; transform:scale(0.98); }
+    50%    { opacity:1;    transform:scale(1.03); }
+  }
   .mic-btn{
     font-family:'Baloo 2', sans-serif;
     font-weight:700;
@@ -355,7 +368,7 @@
   </div>
 
   <p class="hint" id="hint">Tap the button, then blow into your phone 🕯️</p>
-  <button id="micBtn" class="mic-btn">🎤 Let's blow them out!</button>
+  <p class="tap-start" id="tapStart">👆 Tap anywhere to start</p>
   <p class="mic-status" id="micStatus"></p>
   <div class="meter" id="meter"><div class="meter-fill" id="meterFill"></div><div class="meter-mark"></div></div>
   <p class="meter-label" id="meterLabel">blow until the bar passes the pink line</p>
@@ -474,7 +487,7 @@ const ABS_FLOOR_DB   = -75;   // sanity floor only; a real blow sits well above
 const EASE_AFTER_MS  = 1200;  // no progress for this long -> make it easier
 const EASE_STEP_DB   = 2.5;
 
-const micBtn     = document.getElementById('micBtn');
+const tapStart   = document.getElementById('tapStart');
 const micStatus  = document.getElementById('micStatus');
 const meter      = document.getElementById('meter');
 const meterFill  = document.getElementById('meterFill');
@@ -509,21 +522,40 @@ let noiseFloor = -70, threshold = -50;
 let minFlatness = MIN_FLATNESS, minLowRatio = MIN_LOW_RATIO;
 let diagOn = false;
 
-micBtn.addEventListener('click', startMic);
+let micStarting = false;
+
+/* A gesture is required before a browser will hand over the microphone -
+   iOS throws NotAllowedError otherwise - so there is no way to be truly
+   zero-touch on a first visit. Instead: if permission is ALREADY granted
+   from a previous visit, start silently on load; otherwise the first tap
+   anywhere on the page starts it. Either way, no button to find. */
+(async function armMic(){
+  try{
+    if(navigator.permissions && navigator.permissions.query){
+      const st = await navigator.permissions.query({ name:'microphone' });
+      if(st.state === 'granted'){ startMic(); return; }
+    }
+  }catch(e){ /* Safari has no microphone permission query; fall through */ }
+  document.addEventListener('pointerdown', startMic, { once:true });
+})();
 
 async function startMic(){
+  if(micStarting) return;
+  micStarting = true;
+  tapStart.classList.add('gone');
   micStatus.textContent = "Asking for the microphone…";
 
   if(!window.isSecureContext){
     micStatus.textContent = "The microphone needs a secure (https) link. No problem — just tap the candles!";
+    micStarting = false;
     return;
   }
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
     micStatus.textContent = "This browser won't share the microphone here. Just tap the candles!";
+    micStarting = false;
     return;
   }
 
-  micBtn.disabled = true;
   try{
     // these would each flatten a blow into silence, so turn them all off
     micStream = await navigator.mediaDevices.getUserMedia({
@@ -551,7 +583,7 @@ async function startMic(){
     if(err && err.name === 'NotAllowedError') msg = "The microphone was blocked — no worries, just tap the candles!";
     if(err && err.name === 'NotFoundError')  msg = "No microphone on this device — just tap the candles!";
     micStatus.textContent = msg;
-    micBtn.disabled = false;
+    micStarting = false;
   }
 }
 
@@ -679,7 +711,6 @@ function monitor(){
       meter.classList.remove('on');
       meterLabel.classList.remove('on');
       easyBtn.classList.remove('on');
-      micBtn.style.display = 'none';
       stopMic();
     }
   }
