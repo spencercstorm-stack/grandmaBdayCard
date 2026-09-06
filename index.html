@@ -71,7 +71,7 @@
     cursor:pointer;
     transform-origin:center bottom;
     transform-box:fill-box;
-    transition:opacity 1.1s ease-out, transform 1.1s cubic-bezier(.3,.7,.4,1);
+    transition:opacity 0.75s ease-out, transform 0.75s cubic-bezier(.3,.7,.4,1);
   }
   .flame.out{
     opacity:0;
@@ -88,13 +88,13 @@
     100%{ transform:scaleY(1.08) rotate(1.5deg); }
   }
   /* flame leans away as it dies, like it's actually being blown */
-  .flame.out .flame-glow{ animation:none; transform:rotate(22deg); transition:transform 0.9s ease-out; }
+  .flame.out .flame-glow{ animation:none; transform:rotate(22deg); transition:transform 0.6s ease-out; }
 
   /* --- smoke wisp after a candle goes out --- */
   .smoke circle{ opacity:0; transform-box:fill-box; transform-origin:center; }
-  .smoke.go circle{ animation:rise 2.2s ease-out forwards; }
-  .smoke.go circle:nth-child(2){ animation-delay:0.22s; }
-  .smoke.go circle:nth-child(3){ animation-delay:0.46s; }
+  .smoke.go circle{ animation:rise 1.5s ease-out forwards; }
+  .smoke.go circle:nth-child(2){ animation-delay:0.15s; }
+  .smoke.go circle:nth-child(3){ animation-delay:0.30s; }
   @keyframes rise{
     0%{ opacity:0; transform:translate(0,0) scale(0.4); }
     18%{ opacity:0.5; }
@@ -430,11 +430,11 @@ function blowOutOne(id){
     orTap.style.display = 'none';
     buzz([40,60,40]);
     // let the last flame finish dying before the party starts
-    setTimeout(burstConfetti, 700);
+    setTimeout(burstConfetti, 400);
     setTimeout(() => {
       messageWrap.classList.add('revealed');
       setTimeout(() => messageWrap.scrollIntoView({behavior:'smooth', block:'center'}), 400);
-    }, 1200);
+    }, 800);
   } else {
     const remaining = flames.length - blownOut.size;
     hint.textContent = remaining + " candle" + (remaining === 1 ? "" : "s") + " to go...";
@@ -464,14 +464,14 @@ function nextUnlitCandleId(){
    short), and candles are spaced out by COOLDOWN_MS so they die one at a
    time instead of all at once.
    ========================================================================= */
-const CALIBRATION_MS = 1500;
-const SUSTAIN_MS     = 220;   // continuous blow required per candle
-const COOLDOWN_MS    = 850;   // enforced gap between candles
+const CALIBRATION_MS = 800;
+const SUSTAIN_MS     = 130;   // continuous blow required per candle
+const COOLDOWN_MS    = 260;   // enforced gap between candles
 const MARGIN_DB      = 6;     // how far above the room's noise floor
 const MIN_FLATNESS   = 0.07;  // 0 = pure tone, 1 = white noise
 const MIN_LOW_RATIO  = 1.15;  // low-band energy vs speech-band energy
 const ABS_FLOOR_DB   = -75;   // sanity floor only; a real blow sits well above
-const EASE_AFTER_MS  = 2500;  // no progress for this long -> make it easier
+const EASE_AFTER_MS  = 1200;  // no progress for this long -> make it easier
 const EASE_STEP_DB   = 2.5;
 
 const micBtn     = document.getElementById('micBtn');
