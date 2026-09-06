@@ -469,7 +469,7 @@ const SUSTAIN_MS     = 130;   // continuous blow required per candle
 const COOLDOWN_MS    = 260;   // enforced gap between candles
 const MARGIN_DB      = 6;     // how far above the room's noise floor
 const MIN_FLATNESS   = 0.07;  // 0 = pure tone, 1 = white noise
-const MIN_LOW_RATIO  = 1.15;  // low-band energy vs speech-band energy
+const MIN_LOW_RATIO  = 1.0;   // low-band energy vs speech-band energy
 const ABS_FLOOR_DB   = -75;   // sanity floor only; a real blow sits well above
 const EASE_AFTER_MS  = 1200;  // no progress for this long -> make it easier
 const EASE_STEP_DB   = 2.5;
@@ -486,7 +486,7 @@ const diag       = document.getElementById('diag');
 easyBtn.addEventListener('click', () => {
   threshold   = Math.max(threshold - 6, noiseFloor + 1, ABS_FLOOR_DB);
   minFlatness = Math.max(minFlatness * 0.6, 0.02);
-  minLowRatio = Math.max(minLowRatio - 0.15, 0.8);
+  minLowRatio = Math.max(minLowRatio - 0.3, 0.35);
   micStatus.textContent = "Easier now — give it another blow! 💨";
 });
 
@@ -584,27 +584,31 @@ function calibrate(){
   })();
 }
 
-// One frame of analysis: how loud, how noise-like, how bottom-heavy.
+// One frame of analysis: how loud down low, how noise-like, how bottom-heavy.
 function measure(){
   analyser.getFloatFrequencyData(freqData);
 
-  let sumPow = 0, sumLog = 0, n = 0;
-  let lowPow = 0, midPow = 0;
+  let lowPow = 0, lowN = 0;      // 60-500Hz  : where a blow puts its energy
+  let midPow = 0;                // 500-4000Hz: where speech puts its energy
+  let flatPow = 0, flatLog = 0, flatN = 0;   // flatness, low band only
 
   for(let i = loBin; i <= midEnd; i++){
-    const db = Math.max(freqData[i], -120);        // guard against -Infinity
+    const db  = Math.max(freqData[i], -120);   // guard against -Infinity
     const pow = Math.pow(10, db / 10);
-    sumPow += pow;
-    sumLog += Math.log(pow);
-    n++;
-    if(i <= loEnd) lowPow += pow; else midPow += pow;
+    if(i <= loEnd){
+      lowPow += pow; lowN++;
+      flatPow += pow; flatLog += Math.log(pow); flatN++;
+    } else {
+      midPow += pow;
+    }
   }
 
-  const arithMean = sumPow / n;
-  const geoMean   = Math.exp(sumLog / n);
-  const flatness  = arithMean > 0 ? geoMean / arithMean : 0;
-  const lowRatio  = midPow > 0 ? lowPow / midPow : 99;
-  const level     = 10 * Math.log10(arithMean + 1e-12);
+  const lowMean  = lowPow / Math.max(lowN, 1);
+  const arith    = flatPow / Math.max(flatN, 1);
+  const geo      = Math.exp(flatLog / Math.max(flatN, 1));
+  const flatness = arith > 0 ? geo / arith : 0;
+  const lowRatio = midPow > 0 ? lowPow / midPow : 99;
+  const level    = 10 * Math.log10(lowMean + 1e-12);
 
   return { level, flatness, lowRatio };
 }
@@ -624,19 +628,25 @@ function monitor(){
     lastT = now;
 
     const { level, flatness, lowRatio } = measure();
-    const isBlow = level > threshold && flatness > minFlatness && lowRatio > minLowRatio;
+    const tonalVeto = flatness < 0.004;   // a sustained musical tone, not breath
+    const quality   = lowRatio > minLowRatio && !tonalVeto;
+    const isBlow    = level > threshold && quality;
 
     if(now - lastProgress > EASE_AFTER_MS){
       threshold    = Math.max(threshold - EASE_STEP_DB, noiseFloor + 2, ABS_FLOOR_DB);
-      minFlatness  = Math.max(minFlatness * 0.8, 0.02);
-      minLowRatio  = Math.max(minLowRatio - 0.05, 0.8);
+      minFlatness  = Math.max(minFlatness * 0.8, 0.005);
+      minLowRatio  = Math.max(minLowRatio - 0.12, 0.35);
       lastProgress = now;
     }
 
     // meter: 70% of the bar = the threshold, so the mark sits where it must reach
     const span = Math.max(threshold - noiseFloor, 6);
-    const pct  = Math.max(0, Math.min(100, ((level - noiseFloor) / span) * 70));
+    let   pct  = Math.max(0, Math.min(100, ((level - noiseFloor) / span) * 70));
+    if(!quality) pct = Math.min(pct, 62);   // never imply success the gate won't grant
     meterFill.style.width = pct + '%';
+    meterFill.style.background = quality
+      ? 'linear-gradient(90deg, var(--teal), var(--tangerine))'
+      : 'rgba(61,44,86,0.35)';
 
     if(now < cooldownUntil){
       heldMs = 0;                       // pause between candles
