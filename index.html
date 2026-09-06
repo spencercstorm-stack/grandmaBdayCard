@@ -181,6 +181,32 @@
   }
   .meter-label.on{ display:block; }
 
+  .easy-btn{
+    display:none;
+    font-family:'Nunito', sans-serif;
+    font-weight:700;
+    font-size:0.92rem;
+    background:transparent;
+    color:var(--purple);
+    border:2px solid var(--purple);
+    border-radius:999px;
+    padding:11px 20px;
+    margin:14px auto 0 auto;
+    cursor:pointer;
+    touch-action:manipulation;
+    -webkit-appearance:none;
+  }
+  .easy-btn.on{ display:inline-block; }
+  .diag{
+    display:none;
+    font-family:ui-monospace, Menlo, monospace;
+    font-size:0.68rem;
+    color:var(--plum-soft);
+    opacity:0.85;
+    margin:10px 0 0 0;
+    word-break:break-all;
+  }
+  .diag.on{ display:block; }
   .or-tap{
     font-size:0.9rem;
     color:var(--plum-soft);
@@ -333,6 +359,8 @@
   <p class="mic-status" id="micStatus"></p>
   <div class="meter" id="meter"><div class="meter-fill" id="meterFill"></div><div class="meter-mark"></div></div>
   <p class="meter-label" id="meterLabel">blow until the bar passes the pink line</p>
+  <button class="easy-btn" id="easyBtn">Not going out? Tap to make it easier 💨</button>
+  <p class="diag" id="diag"></p>
   <p class="or-tap" id="orTap">…or just tap the candles with your finger 👆</p>
 
   <div class="message-wrap" id="messageWrap">
@@ -437,21 +465,49 @@ function nextUnlitCandleId(){
    time instead of all at once.
    ========================================================================= */
 const CALIBRATION_MS = 1500;
-const SUSTAIN_MS     = 350;   // continuous blow required per candle
-const COOLDOWN_MS    = 900;   // enforced gap between candles
-const MARGIN_DB      = 11;    // how far above the room's noise floor
-const MIN_FLATNESS   = 0.14;  // 0 = pure tone, 1 = white noise
-const MIN_LOW_RATIO  = 1.5;   // low-band energy vs speech-band energy
+const SUSTAIN_MS     = 220;   // continuous blow required per candle
+const COOLDOWN_MS    = 850;   // enforced gap between candles
+const MARGIN_DB      = 6;     // how far above the room's noise floor
+const MIN_FLATNESS   = 0.07;  // 0 = pure tone, 1 = white noise
+const MIN_LOW_RATIO  = 1.15;  // low-band energy vs speech-band energy
+const ABS_FLOOR_DB   = -75;   // sanity floor only; a real blow sits well above
+const EASE_AFTER_MS  = 2500;  // no progress for this long -> make it easier
+const EASE_STEP_DB   = 2.5;
 
 const micBtn     = document.getElementById('micBtn');
 const micStatus  = document.getElementById('micStatus');
 const meter      = document.getElementById('meter');
 const meterFill  = document.getElementById('meterFill');
 const meterLabel = document.getElementById('meterLabel');
+const easyBtn    = document.getElementById('easyBtn');
+const diag       = document.getElementById('diag');
+
+// One tap drops the bar a lot, for a quiet mic or a loud room.
+easyBtn.addEventListener('click', () => {
+  threshold   = Math.max(threshold - 6, noiseFloor + 1, ABS_FLOOR_DB);
+  minFlatness = Math.max(minFlatness * 0.6, 0.02);
+  minLowRatio = Math.max(minLowRatio - 0.15, 0.8);
+  micStatus.textContent = "Easier now — give it another blow! 💨";
+});
+
+// Triple-tap the footer to show the live mic numbers (for tuning).
+let tapCount = 0, tapTimer;
+document.querySelector('footer').addEventListener('click', () => {
+  tapCount++;
+  clearTimeout(tapTimer);
+  tapTimer = setTimeout(() => tapCount = 0, 800);
+  if(tapCount >= 3){
+    diagOn = !diagOn;
+    diag.classList.toggle('on', diagOn);
+    tapCount = 0;
+  }
+});
 
 let audioCtx, analyser, micStream, rafId, freqData;
 let loBin, loEnd, midEnd;
 let noiseFloor = -70, threshold = -50;
+let minFlatness = MIN_FLATNESS, minLowRatio = MIN_LOW_RATIO;
+let diagOn = false;
 
 micBtn.addEventListener('click', startMic);
 
@@ -514,14 +570,15 @@ function calibrate(){
     } else {
       samples.sort((a,b) => a-b);
       const median = samples[Math.floor(samples.length/2)];
-      const loudest = samples[samples.length-1];
+      // 90th percentile, not the max - one stray bump shouldn't set the bar
+      const p90 = samples[Math.floor(samples.length*0.9)];
       noiseFloor = median;
-      // clear the room's median by a margin AND stay above its loudest blip
-      threshold = Math.max(median + MARGIN_DB, loudest + 3, -55);
+      threshold = Math.max(median + MARGIN_DB, p90 + 2, ABS_FLOOR_DB);
       micStatus.textContent = "Ready — take a deep breath and blow! 💨";
       hint.textContent = "Blow now! 💨";
       meter.classList.add('on');
       meterLabel.classList.add('on');
+      easyBtn.classList.add('on');
       monitor();
     }
   })();
@@ -556,13 +613,25 @@ function monitor(){
   let heldMs = 0;
   let lastT = performance.now();
   let cooldownUntil = 0;
+  let lastProgress = performance.now();
+
+  // Relax the bar if she's clearly trying and nothing is happening.
+  minFlatness = MIN_FLATNESS;
+  minLowRatio = MIN_LOW_RATIO;
 
   function tick(now){
     const dt = now - lastT;
     lastT = now;
 
     const { level, flatness, lowRatio } = measure();
-    const isBlow = level > threshold && flatness > MIN_FLATNESS && lowRatio > MIN_LOW_RATIO;
+    const isBlow = level > threshold && flatness > minFlatness && lowRatio > minLowRatio;
+
+    if(now - lastProgress > EASE_AFTER_MS){
+      threshold    = Math.max(threshold - EASE_STEP_DB, noiseFloor + 2, ABS_FLOOR_DB);
+      minFlatness  = Math.max(minFlatness * 0.8, 0.02);
+      minLowRatio  = Math.max(minLowRatio - 0.05, 0.8);
+      lastProgress = now;
+    }
 
     // meter: 70% of the bar = the threshold, so the mark sits where it must reach
     const span = Math.max(threshold - noiseFloor, 6);
@@ -574,7 +643,7 @@ function monitor(){
     } else if(isBlow){
       heldMs += dt;
     } else {
-      heldMs = Math.max(0, heldMs - dt * 1.5);  // decay fast when it stops
+      heldMs = Math.max(0, heldMs - dt);        // decay when it stops
     }
 
     if(heldMs >= SUSTAIN_MS){
@@ -582,6 +651,15 @@ function monitor(){
       if(nextId) blowOutOne(nextId);
       heldMs = 0;
       cooldownUntil = now + COOLDOWN_MS;
+      lastProgress  = now;
+    }
+
+    if(diagOn){
+      diag.textContent =
+        'level ' + level.toFixed(1) + ' / need ' + threshold.toFixed(1) +
+        ' | flat ' + flatness.toFixed(3) + ' / ' + minFlatness.toFixed(3) +
+        ' | low ' + lowRatio.toFixed(2) + ' / ' + minLowRatio.toFixed(2) +
+        (isBlow ? ' | BLOW' : '');
     }
 
     if(blownOut.size < flames.length){
@@ -590,6 +668,7 @@ function monitor(){
       micStatus.textContent = "";
       meter.classList.remove('on');
       meterLabel.classList.remove('on');
+      easyBtn.classList.remove('on');
       micBtn.style.display = 'none';
       stopMic();
     }
