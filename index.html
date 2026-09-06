@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#FFF8E9">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="description" content="A little birthday card, just for you.">
+<title>Happy Birthday, Grandma!</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎂</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#FFF8E9;
+    --pink:#FF6B9D;
+    --pink-deep:#E8467F;
+    --tangerine:#FFA94D;
+    --teal:#2EC4B6;
+    --plum:#3D2C56;
+    --plum-soft:#6b5a86;
+    --purple:#8338EC;
+  }
+  *{box-sizing:border-box;}
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0;
+    min-height:100vh;
+    min-height:100dvh;
+    background:var(--cream);
+    background-image:
+      radial-gradient(circle at 10% 15%, rgba(255,169,77,0.18), transparent 35%),
+      radial-gradient(circle at 90% 85%, rgba(46,196,182,0.16), transparent 35%),
+      radial-gradient(circle at 85% 10%, rgba(255,107,157,0.14), transparent 30%);
+    background-attachment:fixed;
+    font-family:'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+    color:var(--plum);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:
+      calc(20px + env(safe-area-inset-top))
+      calc(18px + env(safe-area-inset-right))
+      calc(28px + env(safe-area-inset-bottom))
+      calc(18px + env(safe-area-inset-left));
+    overflow-x:hidden;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .card{
+    max-width:520px;
+    width:100%;
+    text-align:center;
+    position:relative;
+  }
+  .eyebrow-balloons{
+    font-size:1.9rem;
+    margin-bottom:4px;
+    letter-spacing:8px;
+    /* letter-spacing pushes the block right; nudge it back to centre */
+    text-indent:8px;
+  }
+  h1{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:800;
+    font-size:clamp(2.1rem, 10vw, 3rem);
+    line-height:1.12;
+    margin:0 0 8px 0;
+    color:var(--pink-deep);
+  }
+  .subhead{
+    font-size:clamp(1rem, 4.4vw, 1.15rem);
+    color:var(--plum-soft);
+    margin:0 0 22px 0;
+    font-weight:600;
+  }
+  .stage{
+    position:relative;
+    width:100%;
+    max-width:min(340px, 88vw);
+    margin:0 auto 14px auto;
+  }
+  svg{ width:100%; height:auto; display:block; }
+
+  /* Each flame gets an oversized invisible hit target so fingers can't miss. */
+  .flame{
+    cursor:pointer;
+    transition:opacity 0.25s ease;
+    transform-origin:center bottom;
+  }
+  .flame.out{ opacity:0; }
+  .hit{
+    fill:transparent;
+    cursor:pointer;
+    touch-action:manipulation;
+  }
+  .flame-glow{
+    animation:flicker 1.4s ease-in-out infinite alternate;
+    transform-origin:center bottom;
+  }
+  @keyframes flicker{
+    0%{ transform:scaleY(1) rotate(-1deg); }
+    100%{ transform:scaleY(1.08) rotate(1.5deg); }
+  }
+  .hint{
+    font-size:clamp(0.95rem, 4vw, 1.05rem);
+    color:var(--plum-soft);
+    margin:6px 0 20px 0;
+    font-weight:700;
+  }
+  .hint.done{ color:var(--teal); }
+
+  .mic-btn{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:1.2rem;
+    background:var(--purple);
+    color:#fff;
+    border:none;
+    border-radius:999px;
+    padding:18px 34px;
+    min-height:60px;
+    width:100%;
+    max-width:340px;
+    cursor:pointer;
+    box-shadow:0 8px 18px rgba(131,56,236,0.3);
+    transition:transform 0.15s ease;
+    touch-action:manipulation;
+    -webkit-appearance:none;
+  }
+  .mic-btn:active{ transform:scale(0.96); }
+  .mic-btn:disabled{ opacity:0.55; cursor:default; }
+  .mic-status{
+    font-size:0.95rem;
+    color:var(--plum-soft);
+    margin:12px auto 4px auto;
+    font-weight:600;
+    min-height:20px;
+    max-width:340px;
+    line-height:1.5;
+  }
+  .or-tap{
+    font-size:0.9rem;
+    color:var(--plum-soft);
+    opacity:0.85;
+    margin:6px 0 26px 0;
+    font-weight:600;
+  }
+
+  .message-wrap{
+    max-height:0;
+    overflow:hidden;
+    transition:max-height 0.8s ease;
+  }
+  .message-wrap.revealed{ max-height:2000px; }
+  .message{
+    background:#fff;
+    border-radius:22px;
+    padding:26px 22px;
+    box-shadow:0 12px 30px rgba(61,44,86,0.12);
+    text-align:left;
+    line-height:1.75;
+    font-size:clamp(1.05rem, 4.4vw, 1.15rem);
+    border:2px dashed var(--tangerine);
+    margin-top:6px;
+  }
+  .message p{ margin:0 0 16px 0; }
+  .message p:last-child{ margin-bottom:0; }
+  .signoff{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    color:var(--pink-deep);
+    font-size:1.3rem;
+  }
+  .confetti{
+    position:fixed;
+    top:-20px;
+    z-index:5;
+    pointer-events:none;
+    border-radius:2px;
+  }
+  footer{
+    margin-top:26px;
+    font-size:0.85rem;
+    color:var(--plum-soft);
+    opacity:0.75;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .flame-glow{ animation:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="eyebrow-balloons">🎈🎉🎈</div>
+  <h1>Happy Birthday,<br>Grandma!</h1>
+  <p class="subhead">One more candle, one more year of being the best.</p>
+
+  <div class="stage">
+    <svg viewBox="0 0 340 300" xmlns="http://www.w3.org/2000/svg">
+      <!-- plate -->
+      <ellipse cx="170" cy="260" rx="120" ry="16" fill="#F3D9C4"/>
+      <ellipse cx="170" cy="256" rx="120" ry="16" fill="#FBEADF"/>
+
+      <!-- cake bottom tier -->
+      <rect x="60" y="190" width="220" height="66" rx="14" fill="var(--pink)"/>
+      <rect x="60" y="190" width="220" height="18" rx="9" fill="#fff" opacity="0.55"/>
+      <rect x="60" y="222" width="220" height="10" fill="#fff" opacity="0.3"/>
+
+      <!-- cake top tier -->
+      <rect x="100" y="140" width="140" height="56" rx="12" fill="var(--tangerine)"/>
+      <rect x="100" y="140" width="140" height="14" rx="7" fill="#fff" opacity="0.55"/>
+
+      <!-- sprinkles -->
+      <circle cx="90" cy="215" r="4" fill="#fff"/>
+      <circle cx="250" cy="230" r="4" fill="#fff"/>
+      <circle cx="130" cy="240" r="4" fill="var(--teal)"/>
+      <circle cx="200" cy="205" r="4" fill="var(--purple)"/>
+      <circle cx="120" cy="165" r="3.5" fill="#fff"/>
+      <circle cx="215" cy="170" r="3.5" fill="var(--teal)"/>
+
+      <!-- candles + flames (5 tappable) -->
+      <g id="candle-1">
+        <rect x="112" y="105" width="10" height="38" rx="3" fill="var(--teal)"/>
+        <g class="flame" data-candle="1">
+          <g class="flame-glow">
+            <path d="M117 105 C112 96 112 88 117 82 C122 88 122 96 117 105 Z" fill="var(--tangerine)"/>
+            <path d="M117 100 C114 94 114 90 117 86 C120 90 120 94 117 100 Z" fill="#FFD97D"/>
+          </g>
+        </g>
+      </g>
+
+      <g id="candle-2">
+        <rect x="140" y="98" width="10" height="45" rx="3" fill="var(--purple)"/>
+        <g class="flame" data-candle="2">
+          <g class="flame-glow">
+            <path d="M145 98 C140 89 140 81 145 75 C150 81 150 89 145 98 Z" fill="var(--tangerine)"/>
+            <path d="M145 93 C142 87 142 83 145 79 C148 83 148 87 145 93 Z" fill="#FFD97D"/>
+          </g>
+        </g>
+      </g>
+
+      <g id="candle-3">
+        <rect x="165" y="90" width="10" height="53" rx="3" fill="var(--pink-deep)"/>
+        <g class="flame" data-candle="3">
+          <g class="flame-glow">
+            <path d="M170 90 C165 81 165 73 170 67 C175 73 175 81 170 90 Z" fill="var(--tangerine)"/>
+            <path d="M170 85 C167 79 167 75 170 71 C173 75 173 79 170 85 Z" fill="#FFD97D"/>
+          </g>
+        </g>
+      </g>
+
+      <g id="candle-4">
+        <rect x="192" y="98" width="10" height="45" rx="3" fill="var(--teal)"/>
+        <g class="flame" data-candle="4">
+          <g class="flame-glow">
+            <path d="M197 98 C192 89 192 81 197 75 C202 81 202 89 197 98 Z" fill="var(--tangerine)"/>
+            <path d="M197 93 C194 87 194 83 197 79 C200 83 200 87 197 93 Z" fill="#FFD97D"/>
+          </g>
+        </g>
+      </g>
+
+      <g id="candle-5">
+        <rect x="218" y="105" width="10" height="38" rx="3" fill="var(--purple)"/>
+        <g class="flame" data-candle="5">
+          <g class="flame-glow">
+            <path d="M223 105 C218 96 218 88 223 82 C228 88 228 96 223 105 Z" fill="var(--tangerine)"/>
+            <path d="M223 100 C220 94 220 90 223 86 C226 90 226 94 223 100 Z" fill="#FFD97D"/>
+          </g>
+        </g>
+      </g>
+
+      <!-- Oversized finger targets, drawn last so they sit on top -->
+      <circle class="hit" data-candle="1" cx="117" cy="93"  r="30"/>
+      <circle class="hit" data-candle="2" cx="145" cy="86"  r="30"/>
+      <circle class="hit" data-candle="3" cx="170" cy="78"  r="30"/>
+      <circle class="hit" data-candle="4" cx="197" cy="86"  r="30"/>
+      <circle class="hit" data-candle="5" cx="223" cy="93"  r="30"/>
+    </svg>
+  </div>
+
+  <p class="hint" id="hint">Tap the button, then blow into your phone 🕯️</p>
+  <button id="micBtn" class="mic-btn">🎤 Let's blow them out!</button>
+  <p class="mic-status" id="micStatus"></p>
+  <p class="or-tap" id="orTap">…or just tap the candles with your finger 👆</p>
+
+  <div class="message-wrap" id="messageWrap">
+    <div class="message">
+      <p>Grandma,</p>
+      <p>You've spent every one of your birthdays making everyone else feel loved — so today, it's your turn. I hope this year brings you all the things that make you smile: good stories, better company, and dessert before dinner if you want it.</p>
+      <p>Thank you for the years of hugs, advice, and putting up with all of us. You're the heart of this family, and I love you more than I can fit on a screen.</p>
+      <p class="signoff">Happy Birthday! 🎂💛</p>
+    </div>
+  </div>
+
+  <footer>made with love, just for you</footer>
+</div>
+
+<script>
+const flames = document.querySelectorAll('.flame');
+const hits = document.querySelectorAll('.hit');
+const hint = document.getElementById('hint');
+const orTap = document.getElementById('orTap');
+const messageWrap = document.getElementById('messageWrap');
+const blownOut = new Set();
+
+const confettiColors = ['#FF6B9D','#FFA94D','#2EC4B6','#8338EC','#FFD97D'];
+
+function burstConfetti(){
+  const count = 60;
+  for(let i=0;i<count;i++){
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    const size = 6 + Math.random()*6;
+    el.style.width = size+'px';
+    el.style.height = (size*0.4)+'px';
+    el.style.left = Math.random()*100+'vw';
+    el.style.background = confettiColors[Math.floor(Math.random()*confettiColors.length)];
+    el.style.transform = `rotate(${Math.random()*360}deg)`;
+    document.body.appendChild(el);
+
+    const duration = 2200 + Math.random()*1600;
+    const drift = (Math.random()-0.5)*160;
+    const rotateEnd = Math.random()*720 - 360;
+
+    el.animate([
+      { transform: `translate(0,0) rotate(0deg)`, opacity:1 },
+      { transform: `translate(${drift}px, 100vh) rotate(${rotateEnd}deg)`, opacity:0.9 }
+    ], { duration, easing:'cubic-bezier(.25,.46,.45,.94)', fill:'forwards' });
+
+    setTimeout(() => el.remove(), duration + 100);
+  }
+}
+
+hits.forEach(hit => {
+  hit.addEventListener('click', () => blowOutOne(hit.dataset.candle));
+});
+
+function buzz(ms){
+  if(navigator.vibrate) { try { navigator.vibrate(ms); } catch(e){} }
+}
+
+function blowOutOne(id){
+  if(blownOut.has(id)) return;
+  const flame = document.querySelector(`.flame[data-candle="${id}"]`);
+  if(!flame) return;
+  blownOut.add(id);
+  flame.classList.add('out');
+  buzz(30);
+
+  if(blownOut.size === flames.length){
+    hint.textContent = "Make a wish! 🎁";
+    hint.classList.add('done');
+    orTap.style.display = 'none';
+    buzz([40,60,40]);
+    burstConfetti();
+    setTimeout(() => {
+      messageWrap.classList.add('revealed');
+      setTimeout(() => {
+        messageWrap.scrollIntoView({ behavior:'smooth', block:'center' });
+      }, 400);
+    }, 500);
+  } else {
+    const remaining = flames.length - blownOut.size;
+    hint.textContent = remaining + " candle" + (remaining === 1 ? "" : "s") + " left...";
+  }
+}
+
+function nextUnlitCandleId(){
+  for(const flame of flames){
+    if(!blownOut.has(flame.dataset.candle)) return flame.dataset.candle;
+  }
+  return null;
+}
+
+// --- Microphone blow detection ---
+const micBtn = document.getElementById('micBtn');
+const micStatus = document.getElementById('micStatus');
+let audioCtx, analyser, micStream, rafId;
+
+micBtn.addEventListener('click', startMic);
+
+async function startMic(){
+  micStatus.textContent = "Asking for the microphone…";
+
+  if(!window.isSecureContext){
+    micStatus.textContent = "The microphone needs a secure (https) link. No problem — just tap the candles!";
+    return;
+  }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    micStatus.textContent = "This browser won't share the microphone here. Just tap the candles!";
+    return;
+  }
+
+  micBtn.disabled = true;
+  try{
+    // Turn off the processing that would flatten a blow into silence.
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation:false, noiseSuppression:false, autoGainControl:false }
+    });
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // iOS starts the context suspended until a user gesture resumes it.
+    if(audioCtx.state === 'suspended') await audioCtx.resume();
+    const source = audioCtx.createMediaStreamSource(micStream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 1024;
+    analyser.smoothingTimeConstant = 0.6;
+    source.connect(analyser);
+    micStatus.textContent = "Listening — blow now! 💨";
+    hint.textContent = "Blow now! 💨";
+    monitorVolume();
+  }catch(err){
+    console.error("Mic access failed:", err);
+    let msg = "Couldn't reach the microphone — just tap the candles instead!";
+    if(err && err.name === 'NotAllowedError') msg = "The microphone was blocked — no worries, just tap the candles!";
+    if(err && err.name === 'NotFoundError') msg = "No microphone on this device — just tap the candles!";
+    micStatus.textContent = msg;
+    micBtn.disabled = false;
+  }
+}
+
+function monitorVolume(){
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  const BLOW_THRESHOLD = 30;   // volume level that counts as a "blow"
+  const SUSTAIN_FRAMES = 4;    // consecutive loud frames before a candle goes out
+  let loudFrames = 0;
+
+  function tick(){
+    analyser.getByteFrequencyData(data);
+    // blowing shows up as broadband low-frequency energy; average the lower half
+    const lowerHalf = data.slice(0, Math.floor(data.length * 0.5));
+    const avg = lowerHalf.reduce((a,b) => a+b, 0) / lowerHalf.length;
+
+    if(avg > BLOW_THRESHOLD){
+      loudFrames++;
+    } else {
+      loudFrames = Math.max(0, loudFrames - 1);
+    }
+
+    if(loudFrames >= SUSTAIN_FRAMES){
+      const nextId = nextUnlitCandleId();
+      if(nextId) blowOutOne(nextId);
+      loudFrames = 0;
+    }
+
+    if(blownOut.size < flames.length){
+      rafId = requestAnimationFrame(tick);
+    } else {
+      micStatus.textContent = "";
+      micBtn.style.display = 'none';
+      stopMic();
+    }
+  }
+  tick();
+}
+
+function stopMic(){
+  if(rafId) cancelAnimationFrame(rafId);
+  if(micStream) micStream.getTracks().forEach(t => t.stop());
+  if(audioCtx && audioCtx.state !== 'closed') audioCtx.close();
+}
+</script>
+
+</body>
+</html>
